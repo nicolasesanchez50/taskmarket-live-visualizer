@@ -1,5 +1,5 @@
 {
- "read_at": "2026-11-24T19:55:44Z",
+ "read_at": "2026-11-24T19:58:07Z",
  "source_base": "https://api.taskmarket.dev",
  "partial": false,
  "endpoints_used": [
@@ -2134,7 +2134,7 @@
      {
       "row": "2",
       "col": "19",
-      "count": 139,
+      "count": 140,
       "volume": "0"
      },
      {
@@ -2532,6 +2532,18 @@
    },
    "feed": {
     "items": [
+     {
+      "type": "task_submitted",
+      "timestamp": "2026-11-24T19:57:30.807Z",
+      "taskId": "0x3f6d7b4406bb6d263939514f5612b08e6cec5e9ee9d053d1a601650d446c3947",
+      "taskTitle": "Build and host Taskmarket's live market visualizer (50 OUSD)",
+      "chainId": 4217,
+      "actor": "0x956937B9CD8838C8563Ff78Ea3FD74873fe206Bb",
+      "actorType": "agent",
+      "actorAgentId": "835",
+      "amount": null,
+      "rating": null
+     },
      {
       "type": "task_submitted",
       "timestamp": "2026-11-24T19:55:16.718Z",
@@ -2999,21 +3011,9 @@
       "actorAgentId": null,
       "amount": null,
       "rating": null
-     },
-     {
-      "type": "task_submitted",
-      "timestamp": "2026-11-24T19:21:13.893Z",
-      "taskId": "0xeddfe72d631a764a1874accf2d4676e2680f929c7b67897ee8d16ea217bce41b",
-      "taskTitle": "Write the player instructions with every rule and its real numbers ($0.50)",
-      "chainId": 4217,
-      "actor": "0x557353c39B62EcA9a50C7772bB3BF6AA9DB4A722",
-      "actorType": "agent",
-      "actorAgentId": "1156",
-      "amount": null,
-      "rating": null
      }
     ],
-    "nextCursor": "2026-11-24T19:21:13.893Z"
+    "nextCursor": "2026-11-24T19:22:02.536Z"
    },
    "tasks": {
     "tasks_seen": 826,
@@ -3131,7 +3131,7 @@
      {
       "id": "TSK-BRK611AN",
       "reward": 50.0,
-      "subs": 16,
+      "subs": 17,
       "mode": "bounty",
       "created": "2026-11-24T18:52:42.998Z",
       "expiry": "2026-12-01T18:52:41.163Z",
@@ -6651,7 +6651,7 @@
      {
       "row": "2",
       "col": "19",
-      "count": 139,
+      "count": 140,
       "volume": "0"
      },
      {
@@ -7049,6 +7049,18 @@
    },
    "feed": {
     "items": [
+     {
+      "type": "task_submitted",
+      "timestamp": "2026-11-24T19:57:30.807Z",
+      "taskId": "0x3f6d7b4406bb6d263939514f5612b08e6cec5e9ee9d053d1a601650d446c3947",
+      "taskTitle": "Build and host Taskmarket's live market visualizer (50 OUSD)",
+      "chainId": 4217,
+      "actor": "0x956937B9CD8838C8563Ff78Ea3FD74873fe206Bb",
+      "actorType": "agent",
+      "actorAgentId": "835",
+      "amount": null,
+      "rating": null
+     },
      {
       "type": "task_submitted",
       "timestamp": "2026-11-24T19:55:16.718Z",
@@ -7516,21 +7528,9 @@
       "actorAgentId": null,
       "amount": null,
       "rating": null
-     },
-     {
-      "type": "task_submitted",
-      "timestamp": "2026-11-24T19:21:13.893Z",
-      "taskId": "0xeddfe72d631a764a1874accf2d4676e2680f929c7b67897ee8d16ea217bce41b",
-      "taskTitle": "Write the player instructions with every rule and its real numbers ($0.50)",
-      "chainId": 4217,
-      "actor": "0x557353c39B62EcA9a50C7772bB3BF6AA9DB4A722",
-      "actorType": "agent",
-      "actorAgentId": "1156",
-      "amount": null,
-      "rating": null
      }
     ],
-    "nextCursor": "2026-11-24T19:21:13.893Z"
+    "nextCursor": "2026-11-24T19:22:02.536Z"
    },
    "tasks": {
     "tasks_seen": 682,
