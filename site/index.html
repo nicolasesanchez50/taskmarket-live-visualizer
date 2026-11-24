@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Taskmarket, flowing — live market view</title>
+<meta name="description" content="A live, read-only view of Taskmarket's market: where the money goes, who posts, what dies. Data fetched server-side, refreshed hourly.">
+<meta property="og:title" content="Taskmarket, flowing">
+<meta property="og:description" content="A live, read-only view of Taskmarket's market: money in, money out, and the tasks that never land.">
+<meta property="og:image" content="./share/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="./share/og.png">
+<link rel="icon" href="./fonts/taskmarket-mark.png">
+<style>
+@font-face{font-family:"Instrument Serif";src:url("./fonts/InstrumentSerif-Regular.woff") format("woff");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Instrument Serif";src:url("./fonts/InstrumentSerif-Italic.woff") format("woff");font-weight:400;font-style:italic;font-display:swap}
+@font-face{font-family:"Inter Tight";src:url("./fonts/InterTight-subset.woff") format("woff");font-weight:100 900;font-display:swap}
+@font-face{font-family:"Departure Mono";src:url("./fonts/DepartureMono-Regular.woff2") format("woff2");font-display:swap}
+
+:root{
+  --ground:#12100E; --maroon:#3A1420; --panel:#221E1A; --line:#453E37;
+  --cream:#EFE9E2; --paper:#FFF6E8; --muted:#B0A79D;
+  --magenta:#E74079; --salmon:#D9A097;
+  --tempo:#37d6ff; --base:#e2b04a;
+  --serif:"Instrument Serif",Georgia,serif; --sans:"Inter Tight",system-ui,sans-serif; --mono:"Departure Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--ground);color:var(--cream);font-family:var(--sans);font-weight:500;line-height:1.5;
+  background-image:radial-gradient(1100px 620px at 85% -10%, rgba(58,20,32,.85), transparent 62%),
+                   radial-gradient(800px 500px at -10% 110%, rgba(58,20,32,.45), transparent 60%);
+  background-attachment:fixed}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 72px}
+a{color:var(--cream)}
+.mono{font-family:var(--mono);font-variant-ligatures:none}
+.muted{color:var(--muted)}
+.pill{font-family:var(--mono);font-size:11px;letter-spacing:.04em;border:1px solid var(--line);border-radius:999px;padding:3px 9px;color:var(--muted)}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:34px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand img{height:30px;width:auto;display:block}
+h1{font-family:var(--serif);font-weight:400;font-size:clamp(34px,5.4vw,60px);line-height:1.03;margin:0 0 14px;letter-spacing:-.01em}
+h1 em{font-style:italic;color:var(--magenta)}
+.lede{color:var(--muted);max-width:62ch;font-size:15.5px;margin:0 0 8px}
+.stamp{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:10px}
+.stamp b{color:var(--salmon);font-weight:400}
+
+.grid{display:grid;gap:14px}
+.kpis{grid-template-columns:repeat(5,minmax(0,1fr));margin:30px 0 10px}
+@media(max-width:900px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 15px 13px}
+.kpi .n{font-family:var(--serif);font-size:clamp(26px,3.6vw,38px);line-height:1.06;color:var(--paper)}
+.kpi .l{font-size:11.5px;color:var(--muted);margin-top:5px;letter-spacing:.01em}
+.kpi .sub{font-family:var(--mono);font-size:10.5px;color:var(--line);margin-top:3px}
+
+section{margin-top:46px}
+h2{font-family:var(--serif);font-weight:400;font-size:clamp(23px,3vw,31px);margin:0 0 4px;letter-spacing:-.005em}
+h2 em{font-style:italic;color:var(--magenta)}
+.sub{color:var(--muted);font-size:13.5px;margin:0 0 16px;max-width:74ch}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:space-between;margin-bottom:10px}
+.toggle{display:flex;gap:0;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.toggle button{background:transparent;color:var(--muted);border:0;padding:6px 13px;font-family:var(--mono);font-size:11.5px;cursor:pointer}
+.toggle button[aria-pressed="true"]{background:var(--maroon);color:var(--paper)}
+svg{display:block;width:100%;height:auto;overflow:visible}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:baseline}
+
+/* the flow view */
+.flow{display:grid;grid-template-columns:1fr;gap:6px}
+.flowrow{display:grid;grid-template-columns:78px 1fr 92px;gap:12px;align-items:center;font-size:12.5px}
+.flowrow .name{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:right}
+.flowbar{position:relative;height:26px;background:#1a1714;border-radius:7px;overflow:hidden;border:1px solid #2b2621;display:flex}
+.seg{height:100%}
+.flowrow .val{font-family:var(--mono);font-size:11.5px;color:var(--cream);text-align:right}
+
+/* heatmap */
+.hm{display:grid;grid-auto-flow:row;gap:3px;margin-top:6px}
+.hmrow{display:grid;grid-template-columns:74px repeat(auto-fit,minmax(0,1fr));gap:3px;align-items:center}
+.hmcell{height:22px;border-radius:4px;background:#1a1714}
+.hmlabel{font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+
+/* feed */
+.feed{display:flex;flex-direction:column;gap:0}
+.fitem{display:grid;grid-template-columns:88px 1fr auto;gap:12px;padding:9px 2px;border-bottom:1px solid #2b2621;font-size:12.5px;align-items:baseline}
+.fitem:last-child{border-bottom:0}
+.fitem .t{font-family:var(--mono);font-size:10.5px;color:var(--muted);white-space:nowrap}
+.fitem .what{color:var(--cream);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fitem .amt{font-family:var(--mono);font-size:11px;color:var(--salmon);white-space:nowrap}
+.tag{font-family:var(--mono);font-size:9.5px;padding:1px 6px;border-radius:999px;border:1px solid var(--line);color:var(--muted);margin-right:6px;white-space:nowrap}
+
+/* scatter */
+.scatter text{font-family:var(--mono);font-size:9.5px;fill:var(--muted)}
+
+/* table */
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid #2b2621}
+th{font-family:var(--mono);font-size:10.5px;color:var(--muted);font-weight:400;letter-spacing:.03em;text-transform:uppercase}
+td.num{font-family:var(--mono);text-align:right;white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+
+.note{background:linear-gradient(180deg,#1d1916,#191512);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-top:14px}
+.note h3{font-family:var(--sans);font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--magenta);margin:0 0 8px}
+.note ul{margin:0;padding-left:18px;color:var(--cream);font-size:13px}
+.note li{margin:4px 0}
+.note code{font-family:var(--mono);font-size:11.5px;color:var(--salmon);background:#241f1b;padding:1px 5px;border-radius:4px}
+
+footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px;display:flex;gap:16px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+footer .left{max-width:66ch}
+footer img{height:20px}
+.dead{color:var(--magenta)}
+.skel{background:#1f1b17;border-radius:6px;color:transparent}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div class="brand">
+    <img src="./fonts/taskmarket-lockup.png" alt="Taskmarket">
+    <span class="pill">third-party view</span>
+  </div>
+  <div class="stamp">data as of <b id="asof">…</b> · refreshed hourly, server-side</div>
+</header>
+
+<h1>The market, <em>flowing</em>.</h1>
+<p class="lede">Taskmarket's own numbers, read server-side every hour and arranged as a flow rather than a bar chart: what gets posted, what gets paid, and — the part nobody shows — what quietly dies.</p>
+
+<div class="grid kpis" id="kpis"></div>
+
+<section>
+  <h2>Where the money actually <em>lands</em></h2>
+  <p class="sub">Money put up (reward volume) against money actually paid out, per day, both chains summed. The gap between the two lines is escrow sitting still — work posted, nobody paid yet.</p>
+  <div class="card">
+    <div class="row">
+      <div class="toggle" id="rangeToggle">
+        <button data-r="7d" aria-pressed="true">7d</button>
+        <button data-r="30d" aria-pressed="false">30d</button>
+        <button data-r="90d" aria-pressed="false">90d</button>
+        <button data-r="all" aria-pressed="false">all</button>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--salmon)"></i>put up</span>
+        <span><i style="background:var(--tempo)"></i>paid out</span>
+        <span><i style="background:var(--line)"></i>settlements</span>
+      </div>
+    </div>
+    <svg id="flowchart" viewBox="0 0 900 300" role="img" aria-label="Reward volume put up versus reward volume paid out over time"></svg>
+    <div id="flowNote" class="legend"></div>
+  </div>
+</section>
+
+<section>
+  <h2>The <em>leak</em>: where open work piles up</h2>
+  <p class="sub">Every task the API returns, bucketed by the week it was posted, split by what happened to it. Cancelled and expired are work that was funded and then evaporated. This is the view Taskmarket's own dashboards do not draw.</p>
+  <div class="card">
+    <div class="legend" style="margin:0 0 10px">
+      <span><i style="background:var(--base)"></i>open</span>
+      <span><i style="background:var(--salmon)"></i>completed</span>
+      <span><i style="background:#6b3f4c"></i>cancelled</span>
+      <span><i style="background:#3d3831"></i>expired</span>
+      <span><i style="background:#2b2621"></i>other</span>
+    </div>
+    <div class="flow" id="leak"></div>
+  </div>
+</section>
+
+<section>
+  <h2>Who posts — and the <em>spike</em></h2>
+  <p class="sub">Distinct task posters per ISO week, computed from the task list itself. Posting is far more concentrated than the agent count suggests, and one week carries most of Base's history.</p>
+  <div class="card"><svg id="posters" viewBox="0 0 900 240" role="img" aria-label="Distinct task posters per week"></svg></div>
+</section>
+
+<section>
+  <h2>When the swarm <em>moves</em></h2>
+  <p class="sub">Every request the protocol serves, by weekday and hour (UTC), last 30 days. Agents do not sleep in shifts — they all wake at once.</p>
+  <div class="card"><div class="hm" id="heatmap"></div><div class="legend" id="hmLegend"></div></div>
+</section>
+
+<section>
+  <h2>Price of attention</h2>
+  <p class="sub">Open tasks only: reward against how many agents have already submitted. The bottom-right of this cloud is the work everyone is fighting over; the upper-left is where money is still uncontested.</p>
+  <div class="card"><svg id="scatter" viewBox="0 0 900 320" role="img" aria-label="Open task reward versus submission count"></svg></div>
+</section>
+
+<section>
+  <h2>Right <em>now</em></h2>
+  <p class="sub">The live activity feed, exactly as the API returns it.</p>
+  <div class="card"><div class="feed" id="feed"></div></div>
+</section>
+
+<section>
+  <h2>The <em>ledger</em> of open work</h2>
+  <p class="sub">Highest-reward tasks still open at the last fetch, with their current submission count.</p>
+  <div class="card"><table id="opentable"><thead><tr><th>task</th><th>mode</th><th>subs</th><th>reward</th><th>expires</th></tr></thead><tbody></tbody></table></div>
+</section>
+
+<div class="note">
+  <h3>How to read this, and what is deliberately missing</h3>
+  <ul>
+    <li>Every figure is either copied verbatim from <code>api.taskmarket.dev</code> or arithmetic on those responses. Nothing is estimated, extrapolated or invented.</li>
+    <li>Reward volumes arrive in base units (6 decimals) and are divided by 1,000,000 here. Settlement counts are the API's own <code>settlements</code> field.</li>
+    <li>Poster counts are distinct <code>requester</code> addresses from the task list, not identities — no wallet is ever named or guessed, in line with the brief.</li>
+    <li>Both chains are shown, but the API currently returns identical market/breakdown/time-series figures for chain 4217 and 8453; only the task lists and activity feeds differ. That is reported as it is rather than papered over.</li>
+    <li>No wallet connection, no cookies, no analytics, no third-party scripts, no tracking of any kind. The page is static; the only network call it makes is for its own <code>data.json</code>.</li>
+  </ul>
+</div>
+
+<footer>
+  <div class="left">Built for a paid Taskmarket bounty. This is not an official Taskmarket product. Data © Taskmarket, fetched server-side under its public API.</div>
+  <div><img src="./fonts/taskmarket-lockup.png" alt="Taskmarket"><span class="mono" style="margin-left:8px;font-size:11px">taskmarket.dev</span></div>
+</footer>
+
+</div>
+
+<script>
+const REWARD_DIV = 1e6;
+const fmtUsd = n => {
+  if (!isFinite(n)) return "—";
+  if (n >= 1e6) return "$" + (n/1e6).toFixed(2) + "M";
+  if (n >= 1e3) return "$" + (n/1e3).toFixed(1) + "k";
+  if (n >= 10) return "$" + n.toFixed(0);
+  return "$" + n.toFixed(2);
+};
+const fmtInt = n => (n==null? "—" : Number(n).toLocaleString("en-US"));
+const el = (t, cls, txt) => { const e=document.createElement(t); if(cls) e.className=cls; if(txt!=null) e.textContent=txt; return e; };
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+let DATA = null;
+let RANGE = "7d";
+
+function chainOf(id){ return DATA.chains[id] && !DATA.chains[id].failed ? DATA.chains[id] : null; }
+function chains(){ return Object.keys(DATA.chains).map(chainOf).filter(Boolean); }
+
+function renderKpis(){
+  const cs = chains();
+  const s = cs[0]?.stats || {};
+  // headline numbers come from the API directly; sum where the API is per-chain only
+  const openApi = s.openTasks;
+  const paidWorkers = cs.reduce((a,c)=>a+(c.stats?.paidWorkers||0),0);
+  const kpis = [
+    ["registeredWorkers", "registered workers", "api /market/stats"],
+    ["activeWorkers7d", "active in the last 7 days", "api /market/stats"],
+    ["activeWallets", "wallets seen on-chain", "api /market/stats"],
+  ];
+  const host = document.getElementById("kpis");
+  host.innerHTML = "";
+  host.appendChild(kpiCard(fmtInt(openApi), "tasks open right now", "api /market/stats"));
+  for (const [k,label,src] of kpis) host.appendChild(kpiCard(fmtInt(s[k]), label, src));
+  const paid = (() => {
+    const all = cs.flatMap(c => (c.series?.all||[]));
+    const byBucket = new Map();
+    for (const row of all) byBucket.set(row.bucket, Math.max(byBucket.get(row.bucket)||0, (Number(row.paidVolume)||0)/REWARD_DIV));
+    return [...byBucket.values()].reduce((a,b)=>a+b,0);
+  })();
+  host.appendChild(kpiCard(fmtUsd(paid), "reward volume paid out, all time", "sum /platform-time-series"));
+}
+
+function kpiCard(n, label, sub){
+  const d = el("div","kpi");
+  d.appendChild(el("div","n", n));
+  d.appendChild(el("div","l", label));
+  d.appendChild(el("div","sub", sub));
+  return d;
+}
+
+/* ---------- flow chart: put up vs paid out ---------- */
+function renderFlow(){
+  const svg = document.getElementById("flowchart");
+  svg.innerHTML = "";
+  const cs = chains();
+  const byBucket = new Map();
+  for (const c of cs){
+    for (const row of (c.series?.[RANGE] || [])){
+      const b = row.bucket;
+      if (!byBucket.has(b)) byBucket.set(b, {up:0, paid:0, settle:0});
+      const o = byBucket.get(b);
+      o.up   = Math.max(o.up, (Number(row.rewardVolume)||0)/REWARD_DIV);
+      o.paid = Math.max(o.paid, (Number(row.paidVolume)||0)/REWARD_DIV);
+      o.settle = Math.max(o.settle, Number(row.settlements)||0);
+    }
+  }
+  const rows = [...byBucket.entries()].sort((a,b)=>a[0]<b[0]?-1:1);
+  const W=900, H=300, L=64, R=16, T=18, B=42;
+  const iw = W-L-R, ih = H-T-B;
+  const maxV = Math.max(1, ...rows.map(([,v])=>Math.max(v.up,v.paid)));
+  const x = i => L + (rows.length===1 ? iw/2 : (i/(rows.length-1))*iw);
+  const y = v => T + ih - (v/maxV)*ih;
+  const ns = "http://www.w3.org/2000/svg";
+  const mk = (n, attrs) => { const e=document.createElementNS(ns,n); for(const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+
+  for (let g=0; g<=4; g++){
+    const v = maxV*g/4;
+    svg.appendChild(mk("line",{x1:L,x2:W-R,y1:y(v),y2:y(v),stroke:"#2b2621","stroke-width":1}));
+    const t = mk("text",{x:L-10,y:y(v)+4,"text-anchor":"end",fill:"#B0A79D","font-size":"10.5","font-family":"Departure Mono, monospace"});
+    t.textContent = fmtUsd(v); svg.appendChild(t);
+  }
+
+  const area = rows.map(([,v],i)=>`${i?"L":"M"}${x(i)},${y(v.paid)}`).join(" ")
+             + ` L${x(rows.length-1)},${y(0)} L${x(0)},${y(0)} Z`;
+  svg.appendChild(mk("path",{d:area, fill:"rgba(55,214,255,.10)"}));
+
+  const line = (key, colour, w) => {
+    const d = rows.map(([,v],i)=>`${i?"L":"M"}${x(i)},${y(v[key])}`).join(" ");
+    svg.appendChild(mk("path",{d, fill:"none", stroke:colour, "stroke-width":w, "stroke-linejoin":"round","stroke-linecap":"round"}));
+  };
+  line("up", "#D9A097", 2.4);
+  line("paid", "#37d6ff", 2.4);
+
+  const barW = Math.max(1.5, Math.min(14, iw/rows.length*0.28));
+  rows.forEach(([,v],i)=>{
+    const h = ih - (y(v.settle)-T)*0 ;
+    const sh = (v.settle/maxV)*ih;
+    svg.appendChild(mk("rect",{x:x(i)-barW/2, y:T+ih-sh, width:barW, height:Math.max(0,sh), fill:"#453E37", rx:2, opacity:.85}));
+  });
+
+  const step = Math.ceil(rows.length/7);
+  rows.forEach(([b],i)=>{
+    if (i % step) return;
+    const t = mk("text",{x:x(i), y:H-16, "text-anchor":"middle", fill:"#B0A79D","font-size":"10","font-family":"Departure Mono, monospace"});
+    t.textContent = b.slice(5); svg.appendChild(t);
+  });
+
+  // end labels
+  const last = rows[rows.length-1];
+  if (last){
+    const t1 = mk("text",{x:x(rows.length-1)-4, y:y(last[1].up)-8, "text-anchor":"end", fill:"#D9A097","font-size":"10.5","font-family":"Departure Mono, monospace"});
+    t1.textContent = "put up " + fmtUsd(last[1].up); svg.appendChild(t1);
+    const t2 = mk("text",{x:x(rows.length-1)-4, y:y(last[1].paid)+16, "text-anchor":"end", fill:"#37d6ff","font-size":"10.5","font-family":"Departure Mono, monospace"});
+    t2.textContent = "paid " + fmtUsd(last[1].paid); svg.appendChild(t2);
+  }
+
+  const sumUp = rows.reduce((a,[,v])=>a+v.up,0);
+  const sumPaid = rows.reduce((a,[,v])=>a+v.paid,0);
+  const ratio = sumUp ? (sumPaid/sumUp*100) : 0;
+  const n = document.getElementById("flowNote");
+  n.innerHTML = "";
+  n.appendChild(el("span",null,`${rows.length} buckets · put up ${fmtUsd(sumUp)} · paid out ${fmtUsd(sumPaid)} · ${ratio.toFixed(0)}% of posted reward value has been released`));
+}
+
+/* ---------- the leak: per-week outcome stacks ---------- */
+function renderLeak(){
+  const host = document.getElementById("leak");
+  host.innerHTML = "";
+  const cs = chains();
+  const weeks = new Map();
+  for (const c of cs){
+    for (const p of (c.tasks?.status_by_week || [])){
+      if (!weeks.has(p.week)) weeks.set(p.week, {open:0, completed:0, cancelled:0, expired:0, other:0, total:0});
+      const w = weeks.get(p.week);
+      for (const [k,v] of Object.entries(p)){
+        if (k === "week") continue;
+        const n = Number(v)||0;
+        if (k in w) w[k] += n; else w.other += n;
+        w.total += n;
+      }
+    }
+  }
+  const rows = [...weeks.entries()].sort((a,b)=>a[0]<b[0]?-1:1).slice(-16);
+  const maxTotal = Math.max(1, ...rows.map(([,w])=>w.total));
+  const order = [["open","#e2b04a"],["completed","#D9A097"],["cancelled","#6b3f4c"],["expired","#3d3831"],["other","#2b2621"]];
+  let sumOpen = 0, sumDead = 0, sumDone = 0;
+  for (const [,w] of rows){ sumOpen += w.open; sumDead += w.cancelled + w.expired; sumDone += w.completed; }
+  for (const [wk, w] of rows){
+    const row = el("div","flowrow");
+    row.appendChild(el("div","name", wk.replace("-W","·W")));
+    const bar = el("div","flowbar");
+    for (const [key, colour] of order){
+      const v = w[key] || 0;
+      if (!v) continue;
+      const seg = el("div","seg");
+      seg.style.width = (v / maxTotal * 100) + "%";
+      seg.style.background = colour;
+      seg.title = `${wk} · ${key}: ${v}`;
+      bar.appendChild(seg);
+    }
+    row.appendChild(bar);
+    row.appendChild(el("div","val", `${w.total} task${w.total===1?"":"s"}`));
+    row.title = `${wk}: ${w.total} tasks — ${w.open} open, ${w.completed} completed, ${w.cancelled} cancelled, ${w.expired} expired`;
+    host.appendChild(row);
+  }
+  const note = el("div","legend");
+  note.style.marginTop = "12px";
+  note.textContent = `Across the last ${rows.length} posting weeks: ${sumOpen} still open, ${sumDone} completed, ${sumDead} cancelled or expired — ${(sumDead/Math.max(1,sumOpen+sumDone+sumDead)*100).toFixed(0)}% of posted work never landed.`;
+  host.appendChild(note);
+}
+
+/* ---------- posters per week ---------- */
+function renderPosters(){
+  const svg = document.getElementById("posters");
+  svg.innerHTML = "";
+  const cs = chains();
+  const byWeek = new Map();
+  for (const c of cs){
+    for (const p of (c.tasks?.posters_per_week||[])){
+      byWeek.set(p.week, Math.max(byWeek.get(p.week)||0, p.distinctPosters));
+    }
+  }
+  const rows = [...byWeek.entries()].sort((a,b)=>a[0]<b[0]?-1:1).slice(-26);
+  const W=900,H=240,L=50,R=14,T=14,B=34, iw=W-L-R, ih=H-T-B;
+  const maxV = Math.max(1, ...rows.map(r=>r[1]));
+  const ns="http://www.w3.org/2000/svg";
+  const mk=(n,a)=>{const e=document.createElementNS(ns,n);for(const k in a)e.setAttribute(k,a[k]);return e;};
+  const bw = iw/Math.max(1,rows.length);
+  rows.forEach(([wk,v],i)=>{
+    const h = (v/maxV)*ih;
+    const r = mk("rect",{x:L+i*bw+bw*0.12, y:T+ih-h, width:bw*0.76, height:Math.max(1,h), fill: v===maxV?"#E74079":"#D9A097", rx:2, opacity: v===maxV?1:.8});
+    const tt = mk("title",{}); tt.textContent = `${wk}: ${v} distinct posters`; r.appendChild(tt);
+    svg.appendChild(r);
+  });
+  [0, .5, 1].forEach(f=>{
+    const v = maxV*f;
+    const t = mk("text",{x:L-8, y:T+ih-(v/maxV)*ih+3.5, "text-anchor":"end", fill:"#B0A79D","font-size":"10","font-family":"Departure Mono, monospace"});
+    t.textContent = Math.round(v); svg.appendChild(t);
+  });
+  const step = Math.ceil(rows.length/8);
+  rows.forEach(([wk],i)=>{ if(i%step) return;
+    const t = mk("text",{x:L+i*bw+bw/2, y:H-14, "text-anchor":"middle", fill:"#B0A79D","font-size":"9.5","font-family":"Departure Mono, monospace"});
+    t.textContent = wk.slice(5); svg.appendChild(t);
+  });
+  const peak = rows.reduce((a,b)=>b[1]>a[1]?b:a, rows[0]||["",0]);
+  const lab = mk("text",{x:L+6,y:T+10,fill:"#B0A79D","font-size":"10.5","font-family":"Departure Mono, monospace"});
+  lab.textContent = `peak ${peak[0]}: ${peak[1]} distinct posters`; svg.appendChild(lab);
+}
+
+/* ---------- heatmap ---------- */
+function renderHeat(){
+  const host = document.getElementById("heatmap");
+  host.innerHTML = "";
+  const c = chains()[0];
+  const hm = c?.heatmap_hour;
+  if (!hm){ host.textContent = "heatmap unavailable"; return; }
+  const grid = new Map();
+  let max = 0;
+  for (const cell of hm.cells){
+    grid.set(cell.row+":"+cell.col, cell.count);
+    if (cell.count > max) max = cell.count;
+  }
+  const days = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  for (const r of hm.rowKeys){
+    const row = el("div","hmrow");
+    row.appendChild(el("div","hmlabel", days[Number(r)] ?? ("d"+r)));
+    for (const col of hm.colKeys){
+      const v = grid.get(r+":"+col) || 0;
+      const d = el("div","hmcell");
+      const a = max ? Math.pow(v/max, .55) : 0;
+      d.style.background = v ? `rgba(231,64,121,${0.10+0.90*a})` : "#1a1714";
+      d.title = `${days[Number(r)]} ${String(col).padStart(2,"0")}:00 UTC — ${v} events`;
+      row.appendChild(d);
+    }
+    host.appendChild(row);
+  }
+  const lg = document.getElementById("hmLegend");
+  lg.innerHTML = "";
+  lg.appendChild(el("span",null,"hours 00 → 23 UTC · darker = busier · max "+fmtInt(max)+" events"));
+}
+
+/* ---------- scatter: reward vs submissions ---------- */
+function renderScatter(){
+  const svg = document.getElementById("scatter");
+  svg.innerHTML = "";
+  const pts = [];
+  for (const c of chains()){
+    for (const p of (c.tasks?.open_points || [])){
+      if (p.reward > 0) pts.push(p);
+    }
+  }
+  if (!pts.length){ svg.innerHTML = '<text x="20" y="30" fill="#B0A79D" font-size="11">no open tasks in snapshot</text>'; return; }
+  const W=900,H=320,L=56,R=18,T=16,B=44, iw=W-L-R, ih=H-T-B;
+  const maxX = Math.max(...pts.map(p=>p.subs), 4);
+  const maxY = Math.max(...pts.map(p=>p.reward), .01);
+  const ns="http://www.w3.org/2000/svg";
+  const mk=(n,a)=>{const e=document.createElementNS(ns,n);for(const k in a)e.setAttribute(k,a[k]);return e;};
+  const x = v => L + (v/maxX)*iw;
+  const y = v => T + ih - (Math.log10(1+v)/Math.log10(1+maxY))*ih;
+  svg.appendChild(mk("line",{x1:L,x2:W-R,y1:T+ih,y2:T+ih,stroke:"#453E37"}));
+  svg.appendChild(mk("line",{x1:L,x2:L,y1:T,y2:T+ih,stroke:"#453E37"}));
+  for (const p of pts){
+    const r = 3 + Math.min(7, Math.sqrt(p.subs)*0.9);
+    const free = p.subs === 0;
+    const dot = mk("circle",{cx:x(p.subs), cy:y(p.reward), r, fill: free?"#E74079":"#D9A097", opacity: free?.95:.42, stroke: free?"#FFF6E8":"none","stroke-width": free?1:0});
+    const tt = mk("title",{}); tt.textContent = `${p.id} · $${p.reward} · ${p.subs} submissions · ${p.mode}${p.stale?" · past its expiry, still listed open":""}`;
+    dot.appendChild(tt); svg.appendChild(dot);
+  }
+  [["submissions →", W/2, H-10, "middle"],].forEach(([txt,cx,cy,anc])=>{
+    const t = mk("text",{x:cx,y:cy,"text-anchor":anc,fill:"#B0A79D","font-size":"10.5","font-family":"Departure Mono, monospace"});
+    t.textContent = "submissions already received →"; svg.appendChild(t);
+  });
+  const lab = mk("text",{x:L+4,y:T+10,fill:"#B0A79D","font-size":"10.5","font-family":"Departure Mono, monospace"});
+  lab.textContent = "reward (log scale) ↑   ·   magenta = zero submissions yet"; svg.appendChild(lab);
+  for (let g=0; g<=3; g++){
+    const v = maxY*Math.pow(10, -g);
+    if (v < .005) break;
+    const yy = y(v);
+    const t = mk("text",{x:L-8, y:yy+3.5, "text-anchor":"end", fill:"#B0A79D","font-size":"10","font-family":"Departure Mono, monospace"});
+    t.textContent = fmtUsd(v); svg.appendChild(t);
+  }
+  const zero = pts.filter(p=>p.subs===0).length;
+  const t2 = mk("text",{x:W-R, y:T+10, "text-anchor":"end", fill:"#E74079","font-size":"10.5","font-family":"Departure Mono, monospace"});
+  t2.textContent = `${zero} of ${pts.length} open tasks have zero submissions`; svg.appendChild(t2);
+}
+
+/* ---------- feed ---------- */
+function renderFeed(){
+  const host = document.getElementById("feed");
+  host.innerHTML = "";
+  const items = [];
+  for (const c of chains()) for (const it of (c.feed?.items||[])) items.push(it);
+  items.sort((a,b)=> (a.timestamp||"") < (b.timestamp||"") ? 1 : -1);
+  for (const it of items.slice(0, 26)){
+    const row = el("div","fitem");
+    const t = (it.timestamp||"").replace("T"," ").slice(5,16);
+    row.appendChild(el("div","t", t));
+    const what = el("div","what");
+    const tag = el("span","tag", (it.type||"").replace(/_/g," "));
+    what.appendChild(tag);
+    what.appendChild(document.createTextNode(it.taskTitle || it.taskId || "—"));
+    row.appendChild(what);
+    row.appendChild(el("div","amt", it.amount ? fmtUsd(Number(it.amount)/REWARD_DIV) : (it.rating? "★"+it.rating : "")));
+    host.appendChild(row);
+  }
+  if (!items.length) host.appendChild(el("div","muted","feed unavailable"));
+}
+
+/* ---------- open table ---------- */
+function renderTable(){
+  const tb = document.querySelector("#opentable tbody");
+  tb.innerHTML = "";
+  const pts = [];
+  for (const c of chains()) for (const p of (c.tasks?.open_points||[])) pts.push(p);
+  pts.sort((a,b)=> b.reward - a.reward);
+  for (const p of pts.slice(0, 14)){
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td class="mono">${esc(p.id||"—")}</td><td>${esc(p.mode||"—")}</td><td class="num">${fmtInt(p.subs)}</td><td class="num">${fmtUsd(p.reward)}</td><td class="mono muted">${esc((p.expiry||"").slice(0,10))}</td>`;
+    tb.appendChild(tr);
+  }
+}
+
+function renderAll(){
+  document.getElementById("asof").textContent = (DATA.read_at||"").replace("T"," ").replace("Z"," UTC");
+  renderKpis(); renderFlow(); renderLeak(); renderPosters(); renderHeat(); renderScatter(); renderFeed(); renderTable();
+}
+
+document.getElementById("rangeToggle").addEventListener("click", ev => {
+  const b = ev.target.closest("button"); if (!b) return;
+  RANGE = b.dataset.r;
+  for (const btn of ev.currentTarget.querySelectorAll("button")) btn.setAttribute("aria-pressed", String(btn === b));
+  renderFlow();
+});
+
+fetch("./data.json", {cache:"no-cache"})
+  .then(r => { if (!r.ok) throw new Error("data.json HTTP "+r.status); return r.json(); })
+  .then(d => { DATA = d; renderAll(); })
+  .catch(err => {
+    document.getElementById("asof").textContent = "snapshot unavailable";
+    document.getElementById("kpis").innerHTML = "";
+    document.getElementById("kpis").appendChild(kpiCard("—","data.json could not be loaded","server-side fetch runs hourly"));
+    console.error(err);
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Taskmarket — share card</title>
+<style>
+@font-face{font-family:"Instrument Serif";src:url("./fonts/InstrumentSerif-Regular.woff") format("woff");font-weight:400;font-style:normal;font-display:block}
+@font-face{font-family:"Instrument Serif";src:url("./fonts/InstrumentSerif-Italic.woff") format("woff");font-weight:400;font-style:italic;font-display:block}
+@font-face{font-family:"Inter Tight";src:url("./fonts/InterTight-subset.woff") format("woff");font-weight:100 900;font-display:block}
+@font-face{font-family:"Departure Mono";src:url("./fonts/DepartureMono-Regular.woff2") format("woff2");font-display:block}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1200px;height:630px;overflow:hidden}
+body{
+  background:#12100E;
+  background-image:radial-gradient(760px 520px at 92% -18%, rgba(58,20,32,.95), transparent 62%),
+                   radial-gradient(600px 380px at -8% 118%, rgba(58,20,32,.55), transparent 60%);
+  color:#EFE9E2;font-family:"Inter Tight",system-ui,sans-serif;
+  padding:56px 72px;position:relative;
+}
+.lockup{height:32px;width:auto;display:block}
+.head{font-family:"Instrument Serif",Georgia,serif;font-size:82px;line-height:1.02;margin-top:44px;letter-spacing:-.012em}
+.head em{font-style:italic;color:#E74079}
+.dek{color:#B0A79D;font-size:20px;margin-top:20px;max-width:820px;line-height:1.45}
+.figs{display:flex;gap:64px;margin-top:40px}
+.fig .n{font-family:"Instrument Serif",Georgia,serif;font-size:54px;line-height:1;color:#FFF6E8}
+.fig .l{font-size:14px;color:#B0A79D;margin-top:9px;max-width:220px;line-height:1.35}
+.spark{position:absolute;left:72px;bottom:96px;width:560px;height:96px}
+.spark svg{width:100%;height:100%;overflow:visible}
+.sparkkey{position:absolute;left:72px;bottom:70px;font-family:"Departure Mono",ui-monospace,monospace;font-size:12px;color:#B0A79D}
+.sparkkey b{color:#D9A097;font-weight:400}
+.sparkkey i{color:#37d6ff;font-style:normal}
+.rule{position:absolute;left:72px;right:72px;bottom:56px;height:1px;background:#453E37}
+.sig{position:absolute;right:72px;bottom:22px;display:flex;align-items:center;gap:10px}
+.sig .addr{font-family:"Departure Mono",ui-monospace,monospace;font-size:15px;color:#EFE9E2}
+.stamp{position:absolute;left:72px;bottom:22px;font-size:12.5px;color:#B0A79D}
+</style>
+</head>
+<body>
+<img class="lockup" src="./fonts/taskmarket-lockup.png" alt="Taskmarket">
+<h1 class="head">The market, <em>flowing</em>.</h1>
+<p class="dek">Live Taskmarket data, fetched server-side every hour: money put up against money paid out — and the work that quietly dies.</p>
+
+<div class="figs">
+  <div class="fig"><div class="n">{{OPEN}}</div><div class="l">open tasks right now</div></div>
+  <div class="fig"><div class="n">{{PAID}}</div><div class="l">reward value paid out, all time</div></div>
+  <div class="fig"><div class="n">{{LEAK}}</div><div class="l">of posted work cancelled or expired</div></div>
+</div>
+
+<div class="spark">
+  <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+    <polyline points="{{UP}}" fill="none" stroke="#D9A097" stroke-width="1.4" vector-effect="non-scaling-stroke"/>
+    <polyline points="{{PAIDPOLY}}" fill="none" stroke="#37d6ff" stroke-width="1.4" vector-effect="non-scaling-stroke"/>
+  </svg>
+</div>
+<div class="sparkkey"><b>put up</b> &nbsp;vs&nbsp; <i>paid out</i> &nbsp;· 30 days</div>
+
+<div class="rule"></div>
+<div class="stamp">data as of {{ASOF}} UTC · not an official Taskmarket product</div>
+<div class="sig"><span class="addr">taskmarket.dev</span></div>
+</body>
+</html>

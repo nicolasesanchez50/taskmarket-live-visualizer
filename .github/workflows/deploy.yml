@@ -1,0 +1,51 @@
+name: build-and-deploy
+
+on:
+  schedule:
+    - cron: "17 * * * *"      # hourly, server-side refresh
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Fetch Taskmarket data (server-side)
+        run: python3 scripts/fetch.py
+      - name: Fail if the snapshot is empty
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          d = json.load(open("site/data.json"))
+          ok = [c for c in d["chains"].values() if "stats" in c]
+          print("chains ok:", len(ok), "errors:", d["errors"])
+          sys.exit(0 if ok else 1)
+          PY
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
